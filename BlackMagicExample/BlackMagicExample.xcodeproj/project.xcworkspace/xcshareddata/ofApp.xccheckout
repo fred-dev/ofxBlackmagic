@@ -5,34 +5,46 @@
 	<key>IDESourceControlProjectFavoriteDictionaryKey</key>
 	<false/>
 	<key>IDESourceControlProjectIdentifier</key>
-	<string>4652F4BC-796A-4E80-8737-4CC139A656F7</string>
+	<string>E3AA4D20-802D-4649-BE30-88E0DCE7782C</string>
 	<key>IDESourceControlProjectName</key>
 	<string>ofApp</string>
 	<key>IDESourceControlProjectOriginsDictionary</key>
 	<dict>
-		<key>EEFB56C7-FD89-4474-A090-AE121EEE93D2</key>
-		<string>ssh://github.com/kylemcdonald/openFrameworks.git</string>
+		<key>828441E2-DB64-412F-8978-8BD0747A616B</key>
+		<string>https://github.com/openframeworks/openFrameworks.git</string>
+		<key>ACC1D33A-0C0A-41BB-B3A8-6B10AF0E6562</key>
+		<string>https://github.com/kylemcdonald/ofxBlackmagic.git</string>
 	</dict>
 	<key>IDESourceControlProjectPath</key>
-	<string>addons/ofxBlackMagic/example/ofApp.xcodeproj/project.xcworkspace</string>
+	<string>addons/ofxBlackmagic/example/ofApp.xcodeproj/project.xcworkspace</string>
 	<key>IDESourceControlProjectRelativeInstallPathDictionary</key>
 	<dict>
-		<key>EEFB56C7-FD89-4474-A090-AE121EEE93D2</key>
+		<key>828441E2-DB64-412F-8978-8BD0747A616B</key>
 		<string>../../../../..</string>
+		<key>ACC1D33A-0C0A-41BB-B3A8-6B10AF0E6562</key>
+		<string>../../..</string>
 	</dict>
 	<key>IDESourceControlProjectURL</key>
-	<string>ssh://github.com/kylemcdonald/openFrameworks.git</string>
+	<string>https://github.com/kylemcdonald/ofxBlackmagic.git</string>
 	<key>IDESourceControlProjectVersion</key>
 	<integer>110</integer>
 	<key>IDESourceControlProjectWCCIdentifier</key>
-	<string>EEFB56C7-FD89-4474-A090-AE121EEE93D2</string>
+	<string>828441E2-DB64-412F-8978-8BD0747A616B</string>
 	<key>IDESourceControlProjectWCConfigurations</key>
 	<array>
 		<dict>
 			<key>IDESourceControlRepositoryExtensionIdentifierKey</key>
 			<string>public.vcs.git</string>
 			<key>IDESourceControlWCCIdentifierKey</key>
-			<string>EEFB56C7-FD89-4474-A090-AE121EEE93D2</string>
+			<string>ACC1D33A-0C0A-41BB-B3A8-6B10AF0E6562</string>
+			<key>IDESourceControlWCCName</key>
+			<string>ofxBlackmagic</string>
+		</dict>
+		<dict>
+			<key>IDESourceControlRepositoryExtensionIdentifierKey</key>
+			<string>public.vcs.git</string>
+			<key>IDESourceControlWCCIdentifierKey</key>
+			<string>828441E2-DB64-412F-8978-8BD0747A616B</string>
 			<key>IDESourceControlWCCName</key>
 			<string>openFrameworks</string>
 		</dict>

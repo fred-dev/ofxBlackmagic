@@ -168,13 +168,119 @@ bool DeckLinkController::startCaptureWithIndex(int videoModeIndex)  {
 }
 
 bool DeckLinkController::startCaptureWithMode(BMDDisplayMode videoMode) {
-	if(videoMode == bmdModeHD1080p30) {
-		vector<unsigned char> prototype(1920 * 1080 * 2);
-		buffer.setup(prototype);
-	} else {
-		ofLogError("DeckLinkController") << "DeckLinkController needs to be updated to support that mode.";
-		return false;
-	}
+     
+     switch (videoMode) {
+               
+               
+          case 'ntsc':
+               {vector<unsigned char> prototype(720 * 480 * 2);
+               buffer.setup(prototype);}
+               break;
+          case 'nt23':
+               {vector<unsigned char> prototype(720 * 480 * 2);
+               buffer.setup(prototype);}
+             
+               break;	// 3:2 pulldown
+          case 'pal ':
+               {vector<unsigned char> prototype(720 * 576 * 2);
+               buffer.setup(prototype);}
+       
+               break;
+          case 'ntsp':
+               {vector<unsigned char> prototype(720 * 480 * 2);
+               buffer.setup(prototype);}
+      
+               break;
+          case 'palp':
+               {vector<unsigned char> prototype(720 * 576 * 2);
+               buffer.setup(prototype);}
+   
+               break;
+               
+               /* HD 1080 Modes */
+               
+          case '23ps':
+               {vector<unsigned char> prototype(1920 * 1080 * 2);
+               buffer.setup(prototype);}
+               break;
+          case '24ps':
+               {vector<unsigned char> prototype(1920 * 1080 * 2);
+               buffer.setup(prototype);}
+               break;
+          case 'Hp25':
+               {vector<unsigned char> prototype(1920 * 1080 * 2);
+               buffer.setup(prototype);}
+               break;
+          case 'Hp29':
+               {vector<unsigned char> prototype(1920 * 1080 * 2);
+               buffer.setup(prototype);}
+               break;
+          case 'Hp30':
+               {vector<unsigned char> prototype(1920 * 1080 * 2);
+               buffer.setup(prototype);}
+               break;
+          case 'Hi50':
+               {vector<unsigned char> prototype(1920 * 1080 * 2);
+               buffer.setup(prototype);}
+               break;
+          case 'Hi59':
+               {vector<unsigned char> prototype(1920 * 1080 * 2);
+               buffer.setup(prototype);}
+               break;
+          case 'Hi60':
+               {vector<unsigned char> prototype(1920 * 1080 * 2);
+               buffer.setup(prototype);}
+               break;	// N.B. This _really_ is 60.00 Hz.
+          case 'Hp50':
+               {vector<unsigned char> prototype(1920 * 1080 * 2);
+               buffer.setup(prototype);}
+               break;
+          case 'Hp59':
+               {vector<unsigned char> prototype(1920 * 1080 * 2);
+               buffer.setup(prototype);}
+               break;
+          case 'Hp60':
+               {vector<unsigned char> prototype(1920 * 1080 * 2);
+               buffer.setup(prototype);}
+               break;	// N.B. This _really_ is 60.00 Hz.
+               
+               /* HD 720 Modes */
+               
+          case 'hp50':
+               {vector<unsigned char> prototype(1280 * 720 * 2);
+               buffer.setup(prototype);}
+               break;
+          case 'hp59':
+               {vector<unsigned char> prototype(1280 * 720 * 2);
+               buffer.setup(prototype);}
+               break;
+          case 'hp60':
+               {vector<unsigned char> prototype(1280 * 720 * 2);
+               buffer.setup(prototype);}
+               break;
+               
+               /* 2k Modes */
+               
+          case '2k23':
+               {vector<unsigned char> prototype(2048 * 1080 * 2);
+               buffer.setup(prototype);}
+               break;
+          case '2k24':
+               {vector<unsigned char> prototype(2048 * 1080 * 2);
+               buffer.setup(prototype);}
+               break;
+          case '2k25':
+               {vector<unsigned char> prototype(2048 * 1080 * 2);
+               buffer.setup(prototype);}
+               break;
+     }
+//	if(videoMode == bmdModeHD1080p25) {
+//		vector<unsigned char> prototype(1920 * 1080 * 2);
+//		buffer.setup(prototype);
+//	} else {
+//		ofLogError("DeckLinkController") << "DeckLinkController needs to be updated to support that mode.";
+//		return false;
+//	}
 	
 	BMDVideoInputFlags videoInputFlags;
 	

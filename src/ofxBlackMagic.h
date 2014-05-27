@@ -4,6 +4,8 @@
  four bytes.
  */
 
+
+
 #pragma once
 
 #include "ofMain.h"
@@ -23,7 +25,7 @@ private:
 	
 public:
 	ofxBlackMagic();
-	bool setup(int width, int height, float framerate);
+	bool setup(int device, unsigned int displayModeSelect);
 	void close(); // should call this in ofApp::exit()
 	bool update(); // returns true if there is a new frame
 	
@@ -38,4 +40,5 @@ public:
 	void drawYuv(); // fastest
 	void drawGray(); // fast
 	void drawColor(); // slower
+  
 };
