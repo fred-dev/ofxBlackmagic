@@ -15,7 +15,7 @@ Some advantages of this addon:
 
 ## Supported System
 
-This addon has been checked with OS X 10.8 on Mac Mini, openFrameworks 0.8.0 and a UltraStudio Mini Recorder with a single 1080p30 camera.
+This addon has been checked with OS X 10.8 on Mac Mini, openFrameworks 0.8.0. This fork adds multiple device support and all formats up to 2k- I am sure it is a gross hack but it is working for me, more elegant solutions are welcome (ie querying how many cards are in the system and queurying what resolutions a card supports)
 
 ## Installation
 
