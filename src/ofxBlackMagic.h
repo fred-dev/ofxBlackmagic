@@ -6,49 +6,94 @@
 
 
 
+//#define NORDWR
+
 #pragma once
 
 #include "ofMain.h"
 
 #include "DeckLinkController.h"
 
+
+
 class ofxBlackMagic {
 private:
-	DeckLinkController controller;
+#ifdef NORDWR
      
+#else
+     DeckLinkController controller;
+	int width;
+     int height;
 	bool grayPixOld, colorPixOld;
 	ofPixels yuvPix, grayPix, colorPix;
 	bool yuvTexOld, grayTexOld, colorTexOld;
 	ofTexture yuvTex, grayTex, colorTex;
+	
+	
+#endif
+     public:
      
-	int width, height;
+
      
-public:
-	ofxBlackMagic();
+#ifdef NORDWR
+     
+
+     int width, height;
+     ofVideoGrabber grabber;
+     
+     bool setup(int device, int displayModeSelect);
+	void close(); // should call this in ofApp::exit()
+	bool update(); // returns true if there is a new frame
+     int getWidth();
+     int getHeight();
+     
+     vector<string> listDevices();
+	
+     ofPixels& getGrayPixels(); // fast
+	ofPixels& getColorPixels(); // slow
+	
+	ofTexture& getYuvTexture(); // fastest
+	ofTexture& getGrayTexture(); // fast
+	ofTexture& getColorTexture(); // slower
+     
+     
+	void drawGray(float x, float y); // fast
+     void drawGray(float x, float y, float w, float h); // fast
+	
+     void drawColor(float x, float y); // slower
+     void drawColor(float x, float y, float w, float h); // slower
+     
+#else
+     
+
+     ofxBlackMagic();
 	bool setup(int device, unsigned int displayModeSelect);
 	void close(); // should call this in ofApp::exit()
 	bool update(); // returns true if there is a new frame
      int getWidth();
      int getHeight();
      
-     
-     
+     vector<string> listDevices();
+	
 	vector<unsigned char>& getYuvRaw(); // fastest
 	ofPixels& getGrayPixels(); // fast
 	ofPixels& getColorPixels(); // slow
-     
+	
 	ofTexture& getYuvTexture(); // fastest
 	ofTexture& getGrayTexture(); // fast
 	ofTexture& getColorTexture(); // slower
-     
+	
 	void drawYuv(float x, float y); // fastest
      void drawYuv(float x, float y, float w, float h); // fastest
      
 	void drawGray(float x, float y); // fast
      void drawGray(float x, float y, float w, float h); // fast
-     
+	
      void drawColor(float x, float y); // slower
      void drawColor(float x, float y, float w, float h); // slower
+#endif
+     
+	
      
      
      
