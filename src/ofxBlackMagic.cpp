@@ -20,14 +20,14 @@ bool ofxBlackMagic::setup(int device,unsigned int displayModeSelect) {
 	ofLogVerbose("ofxBlackMagic") << "Available display modes: " << ofToString(displayModes);
 	BMDDisplayMode displayMode = bmdModeUnknown;
      
-    
-		displayMode = displayModeSelect;
-
+     
+     displayMode = displayModeSelect;
+     
 	if(!controller.startCaptureWithMode(displayMode)) {
 		return false;
 	}
      switch (displayModeSelect) {
-          
+               
                
           case 'ntsc':
                this->width= 720, this->height=480;
@@ -104,9 +104,9 @@ bool ofxBlackMagic::setup(int device,unsigned int displayModeSelect) {
           case '2k25':
                this->width= 2048, this->height=1080;
                break;
-
+               
      }
-
+     
 	return true;
 }
 
@@ -174,15 +174,33 @@ ofTexture& ofxBlackMagic::getColorTexture() {
 	return colorTex;
 }
 
-void ofxBlackMagic::drawYuv(){
-	getYuvTexture().draw(0, 0);
+
+
+
+void ofxBlackMagic::drawYuv(float x, float y){
+	getYuvTexture().draw(x, y);
+}
+void ofxBlackMagic::drawYuv(float x, float y, float w, float h){
+	getYuvTexture().draw(x, y, w, h);
 }
 
-void ofxBlackMagic::drawGray() {
-	getGrayTexture().draw(0, 0);
+void ofxBlackMagic::drawGray(float x, float y) {
+	getGrayTexture().draw(x, y);
+}
+void ofxBlackMagic::drawGray(float x, float y, float w, float h) {
+	getGrayTexture().draw(x, y, w, h);
 }
 
-void ofxBlackMagic::drawColor() {
-	getColorTexture().draw(0, 0);
+void ofxBlackMagic::drawColor(float x, float y) {
+	getColorTexture().draw(x, y);
+}
+void ofxBlackMagic::drawColor(float x, float y, float w, float h) {
+	getColorTexture().draw(x, y, w, h);
 }
 
+int ofxBlackMagic::getWidth() {
+	return this->width;
+}
+int ofxBlackMagic::getHeight() {
+	return this->height;
+}

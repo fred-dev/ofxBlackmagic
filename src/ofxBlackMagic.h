@@ -15,30 +15,43 @@
 class ofxBlackMagic {
 private:
 	DeckLinkController controller;
-	
+     
 	bool grayPixOld, colorPixOld;
 	ofPixels yuvPix, grayPix, colorPix;
 	bool yuvTexOld, grayTexOld, colorTexOld;
 	ofTexture yuvTex, grayTex, colorTex;
-	
+     
 	int width, height;
-	
+     
 public:
 	ofxBlackMagic();
 	bool setup(int device, unsigned int displayModeSelect);
 	void close(); // should call this in ofApp::exit()
 	bool update(); // returns true if there is a new frame
-	
+     int getWidth();
+     int getHeight();
+     
+     
+     
 	vector<unsigned char>& getYuvRaw(); // fastest
 	ofPixels& getGrayPixels(); // fast
 	ofPixels& getColorPixels(); // slow
-	
+     
 	ofTexture& getYuvTexture(); // fastest
 	ofTexture& getGrayTexture(); // fast
 	ofTexture& getColorTexture(); // slower
-	
-	void drawYuv(); // fastest
-	void drawGray(); // fast
-	void drawColor(); // slower
-  
+     
+	void drawYuv(float x, float y); // fastest
+     void drawYuv(float x, float y, float w, float h); // fastest
+     
+	void drawGray(float x, float y); // fast
+     void drawGray(float x, float y, float w, float h); // fast
+     
+     void drawColor(float x, float y); // slower
+     void drawColor(float x, float y, float w, float h); // slower
+     
+     
+     
+     
+     
 };
