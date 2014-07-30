@@ -17,7 +17,7 @@
 
 
 class ofxBlackMagic {
-private:
+public:
 
      
      bool hasHardware;
