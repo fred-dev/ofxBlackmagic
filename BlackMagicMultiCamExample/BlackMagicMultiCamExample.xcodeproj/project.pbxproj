@@ -10,6 +10,7 @@
 		0B06AF481628430095F582FA /* ofxBlackMagic.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A31CEBBE14AACAFCBCC7AF43 /* ofxBlackMagic.cpp */; };
 		2413480B948EEA290CED44D2 /* DeckLinkAPIDispatch.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8ED5A2818442703AFB2BF1BF /* DeckLinkAPIDispatch.cpp */; };
 		273629941820E91D00CB625E /* ColorConversion.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 273629921820E91D00CB625E /* ColorConversion.cpp */; };
+		B6411EEC1AA73B480058B89F /* ofxBlackMagicOutput.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B6411EEA1AA73B480058B89F /* ofxBlackMagicOutput.cpp */; };
 		BBAB23CB13894F3D00AA2426 /* GLUT.framework in CopyFiles */ = {isa = PBXBuildFile; fileRef = BBAB23BE13894E4700AA2426 /* GLUT.framework */; };
 		E4328149138ABC9F0047C5CB /* openFrameworksDebug.a in Frameworks */ = {isa = PBXBuildFile; fileRef = E4328148138ABC890047C5CB /* openFrameworksDebug.a */; };
 		E45BE97B0E8CC7DD009D7055 /* AGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E45BE9710E8CC7DD009D7055 /* AGL.framework */; };
@@ -76,6 +77,8 @@
 		8ED5A2818442703AFB2BF1BF /* DeckLinkAPIDispatch.cpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; fileEncoding = 30; name = DeckLinkAPIDispatch.cpp; path = ../../ofxBlackMagic/libs/DeckLink/src/DeckLinkAPIDispatch.cpp; sourceTree = SOURCE_ROOT; };
 		A31CEBBE14AACAFCBCC7AF43 /* ofxBlackMagic.cpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; fileEncoding = 30; name = ofxBlackMagic.cpp; path = ../../ofxBlackMagic/src/ofxBlackMagic.cpp; sourceTree = SOURCE_ROOT; };
 		B3CF969678E04C8B40E49CF1 /* DeckLinkAPIDiscovery.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.h; fileEncoding = 30; name = DeckLinkAPIDiscovery.h; path = ../../ofxBlackMagic/libs/DeckLink/include/DeckLinkAPIDiscovery.h; sourceTree = SOURCE_ROOT; };
+		B6411EEA1AA73B480058B89F /* ofxBlackMagicOutput.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = ofxBlackMagicOutput.cpp; path = ../src/ofxBlackMagicOutput.cpp; sourceTree = "<group>"; };
+		B6411EEB1AA73B480058B89F /* ofxBlackMagicOutput.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = ofxBlackMagicOutput.h; path = ../src/ofxBlackMagicOutput.h; sourceTree = "<group>"; };
 		BBAB23BE13894E4700AA2426 /* GLUT.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = GLUT.framework; path = ../../../libs/glut/lib/osx/GLUT.framework; sourceTree = "<group>"; };
 		D77827E6000D31BFF956DD1D /* ofxBlackMagic.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.h; fileEncoding = 30; name = ofxBlackMagic.h; path = ../../ofxBlackMagic/src/ofxBlackMagic.h; sourceTree = SOURCE_ROOT; };
 		DF39FFA388932711978C0745 /* DeckLinkAPITypes.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.h; fileEncoding = 30; name = DeckLinkAPITypes.h; path = ../../ofxBlackMagic/libs/DeckLink/include/DeckLinkAPITypes.h; sourceTree = SOURCE_ROOT; };
@@ -159,6 +162,8 @@
 		4FFF824571D307377B266279 /* src */ = {
 			isa = PBXGroup;
 			children = (
+				B6411EEA1AA73B480058B89F /* ofxBlackMagicOutput.cpp */,
+				B6411EEB1AA73B480058B89F /* ofxBlackMagicOutput.h */,
 				1716A5684BC3EB831AC8B6BA /* DeckLinkController.cpp */,
 				176CD3A38DBE49DB555F6961 /* DeckLinkController.h */,
 				A31CEBBE14AACAFCBCC7AF43 /* ofxBlackMagic.cpp */,
@@ -370,6 +375,7 @@
 				FF2A09A9D39D58C1556A39E0 /* DeckLinkController.cpp in Sources */,
 				273629941820E91D00CB625E /* ColorConversion.cpp in Sources */,
 				0B06AF481628430095F582FA /* ofxBlackMagic.cpp in Sources */,
+				B6411EEC1AA73B480058B89F /* ofxBlackMagicOutput.cpp in Sources */,
 				2413480B948EEA290CED44D2 /* DeckLinkAPIDispatch.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
