@@ -52,10 +52,6 @@ public:
      
      
      
-     
-     
-<<<<<<< HEAD
+
 };
-=======
-};
->>>>>>> origin/master
+

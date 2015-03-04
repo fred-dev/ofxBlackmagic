@@ -203,8 +203,6 @@ int ofxBlackMagic::getWidth() {
 }
 int ofxBlackMagic::getHeight() {
 	return this->height;
-<<<<<<< HEAD
+
 }
-=======
-}
->>>>>>> origin/master
+
