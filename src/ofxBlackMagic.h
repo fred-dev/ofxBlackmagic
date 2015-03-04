@@ -54,4 +54,8 @@ public:
      
      
      
+<<<<<<< HEAD
 };
+=======
+};
+>>>>>>> origin/master

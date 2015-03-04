@@ -42,8 +42,7 @@ public:
 	ofxBlackMagic cam1;
      ofxBlackMagic cam2;
 	RateTimer timer;
-     ofFbo cam1Fbo;
-     ofFbo cam2Fbo;
+
      
 	
 	void setup() {
@@ -84,9 +83,7 @@ public:
 		ofSetLogLevel(OF_LOG_VERBOSE);
 		cam1.setup(0,'Hp25' );
           cam2.setup(1,'Hp25');
-          cam1Fbo.allocate(1920, 1080);
-          cam2Fbo.allocate(1920, 1080);
-          
+
 	}
 	void exit() {
 		cam1.close();
@@ -101,17 +98,11 @@ public:
 		}
 	}
 	void draw() {
-          cam1Fbo.begin();
-          ofClear(0, 0, 0,0);
-		cam1.drawColor();
-     cam1Fbo.end();
           
-          cam2Fbo.begin();
-          ofClear(0, 0, 0,0);
-          cam2.drawColor();
-          cam2Fbo.end();
-          cam1Fbo.draw(0,0, 960, 540);
-          cam2Fbo.draw(960,0, 960,540);
+		cam1.drawColor(0,0,960,540);
+
+          cam2.drawColor(960,0,960,540);
+         
           
 		ofDrawBitmapStringHighlight(ofToString((int) timer.getFramerate()), 10, 20);
 	}
@@ -123,6 +114,6 @@ public:
 };
 
 int main() {
-	ofSetupOpenGL(1280, 720, OF_WINDOW);
+	ofSetupOpenGL(1920, 540, OF_WINDOW);
 	ofRunApp(new ofApp());
 }
