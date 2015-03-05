@@ -3,14 +3,14 @@
 //--------------------------------------------------------------
 void ofApp::setup(){
 
-    camWidth 		= 720;	// try to grab at this size.
-    camHeight 		= 576;
+    camWidth 		= 1920;	// try to grab at this size.
+    camHeight 		= 1080;
     grabber.initGrabber(camWidth, camHeight);
     
     myImage.allocate(camWidth, camHeight, OF_IMAGE_COLOR_ALPHA);
     
    
-    bmOutput.setup('palp');
+    bmOutput.setup('Hp25');
     
 
 }

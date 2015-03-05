@@ -35,7 +35,7 @@ ofxBlackMagicOutput::~ofxBlackMagicOutput(){
 }
 
 
-bool ofxBlackMagicOutput::setup(BMDDisplayMode mode){
+bool ofxBlackMagicOutput::setup(BMDDisplayMode mode, bool hasAudio){
     
     bool bSuccess = FALSE;
     IDeckLinkIterator* pDLIterator = NULL;
@@ -126,6 +126,11 @@ error:
     
     if (pDLOutput->EnableVideoOutput(pDLDisplayMode->GetDisplayMode(), bmdVideoOutputFlagDefault) != S_OK)
         return false;
+    if (hasAudio) {
+        if (pDLOutput->EnableAudioOutput(bmdAudioSampleRate48kHz, bmdAudioSampleType16bitInteger, 2, bmdAudioOutputStreamContinuous)!= S_OK) {
+            return false;
+        }
+    }
     
     // Flip frame vertical, because OpenGL rendering starts from left bottom corner
     if (pDLOutput->CreateVideoFrame(uiFrameWidth, uiFrameHeight, uiFrameWidth*4, bmdFormat8BitBGRA, bmdFrameFlagDefault, &pDLVideoFrame) != S_OK)
@@ -152,12 +157,15 @@ void ofxBlackMagicOutput::renderFrame(unsigned char* bytes, int length){
     void*	pFrame;
     
     pDLVideoFrame->GetBytes((void**)&pFrame);
+
     
     memcpy(pFrame, bytes, fmin(length, uiFrameWidth*uiFrameHeight*4));
     
     HRESULT hr = pDLOutput->DisplayVideoFrameSync(pDLVideoFrame);
     if (hr)
         uiTotalFrames++;
+   // pDLOutput->WriteAudioSamplesSync(<#void *buffer#>, <#uint32_t sampleFrameCount#>, <#uint32_t *sampleFramesWritten#>)
+    
     
 }
 
