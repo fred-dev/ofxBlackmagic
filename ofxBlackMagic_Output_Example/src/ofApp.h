@@ -26,5 +26,7 @@ class ofApp : public ofBaseApp{
     ofTexture			videoTexture;
     int 				camWidth;
     int 				camHeight;
+    ofImage myImage;
+    ofPixels tmpPix;
 		
 };

@@ -2,12 +2,16 @@
 
 //--------------------------------------------------------------
 void ofApp::setup(){
-    bmOutput.setup();
-    camWidth 		= 1920;	// try to grab at this size.
-    camHeight 		= 1080;
+
+    camWidth 		= 720;	// try to grab at this size.
+    camHeight 		= 576;
     grabber.initGrabber(camWidth, camHeight);
-    videoInverted 	= new unsigned char[camWidth*camHeight*3];
-    videoTexture.allocate(camWidth,camHeight, GL_RGB);
+    
+    myImage.allocate(camWidth, camHeight, OF_IMAGE_COLOR_ALPHA);
+    
+   
+    bmOutput.setup('palp');
+    
 
 }
 
@@ -16,20 +20,31 @@ void ofApp::update(){
     grabber.update();
     
     if (grabber.isFrameNew()){
-        int totalPixels = camWidth*camHeight*3;
-        unsigned char * pixels = grabber.getPixels();
-        for (int i = 0; i < totalPixels; i++){
-            videoInverted[i] = 255 - pixels[i];
-        }
-        videoTexture.loadData(videoInverted, camWidth,camHeight, GL_RGB);
-        bmOutput.renderFrame(videoInverted, camWidth*camHeight*3);
+        myImage.setFromPixels(grabber.getPixelsRef().getPixels(), camWidth, camHeight, OF_IMAGE_COLOR);
+        myImage.setImageType(OF_IMAGE_COLOR_ALPHA);
+        int totalpix = camWidth*camHeight;
+                    unsigned char c;
+                    unsigned char* buf = myImage.getPixels();
+        
+                    for(int i=0;i<totalpix;i++){
+                        c = buf[i*4];
+                        buf[i*4] = buf[i*4 + 2];
+                        buf[i*4+2] = c;
+                    }
+            bmOutput.renderFrame(buf, camWidth*camHeight*4);
     }
-
+   
 }
 
 //--------------------------------------------------------------
 void ofApp::draw(){
-    videoTexture.draw(0,0);
+
+    
+
+    //myImage.draw(0,0,1280,720);
+
+    
+    
 
 }
 

@@ -11,7 +11,7 @@ class ofxBlackMagicOutput : ofThread
 public:
     ofxBlackMagicOutput();
     ~ofxBlackMagicOutput();
-    bool setup();
+    bool setup(BMDDisplayMode mode);
     
     void threadedFunction();
     bool exitThreadFlag;
