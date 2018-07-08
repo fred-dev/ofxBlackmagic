@@ -44,7 +44,7 @@
 /* DeckLink API */
 
 #include <stdint.h>
-//#include "LinuxCOM.h"
+#include "LinuxCOM.h"
 
 #include "DeckLinkAPITypes.h"
 #include "DeckLinkAPIModes.h"
