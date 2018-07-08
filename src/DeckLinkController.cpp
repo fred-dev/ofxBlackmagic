@@ -2,7 +2,12 @@
 #include "DeckLinkController.h"
 
 DeckLinkController::DeckLinkController()
-: selectedDevice(NULL), deckLinkInput(NULL), supportFormatDetection(false), currentlyCapturing(false)  {}
+: selectedDevice(NULL)
+, deckLinkInput(NULL)
+, supportFormatDetection(false)
+, currentlyCapturing(false)
+, rgbaFrame(NULL)  {
+}
 
 DeckLinkController::~DeckLinkController()  {
 	vector<IDeckLink*>::iterator it;
@@ -11,6 +16,13 @@ DeckLinkController::~DeckLinkController()  {
 	for(it = deviceList.begin(); it != deviceList.end(); it++) {
 		(*it)->Release();
 	}
+    
+    // Release the IDeckLinkVideoConversion
+    if (this->videoConverter) {
+        this->videoConverter->Release();
+    }
+    
+    delete rgbaFrame;
 }
 
 bool DeckLinkController::init()  {
@@ -35,6 +47,10 @@ bool DeckLinkController::init()  {
 		ofLogError("DeckLinkController") << "You will not be able to use the features of this application until a Blackmagic device is installed.";
 		goto bail;
 	}
+    
+    // Create a video converter
+    videoConverter = CreateVideoConversionInstance();
+    videoConverter->AddRef();
 	
 	result = true;
 	
@@ -52,27 +68,54 @@ int DeckLinkController::getDeviceCount()  {
 	return deviceList.size();
 }
 
+
+#ifdef TARGET_OSX
 vector<string> DeckLinkController::getDeviceNameList()  {
-	vector<string> nameList;
-	int deviceIndex = 0;
-	
-	while (deviceIndex < deviceList.size()) {
-		CFStringRef cfStrName;
-		
-		// Get the name of this device
-		if (deviceList[deviceIndex]->GetDisplayName(&cfStrName) == S_OK) {
-			nameList.push_back(string(CFStringGetCStringPtr(cfStrName, kCFStringEncodingMacRoman)));
-			CFRelease(cfStrName);
-		}
-		else {
-			nameList.push_back("DeckLink");
-		}
-		
-		deviceIndex++;
-	}
-	
-	return nameList;
+    vector<string> nameList;
+    int deviceIndex = 0;
+    
+    while (deviceIndex < deviceList.size()) {
+        CFStringRef cfStrName;
+        
+        // Get the name of this device
+        if (deviceList[deviceIndex]->GetDisplayName(&cfStrName) == S_OK) {
+            nameList.push_back(string(CFStringGetCStringPtr(cfStrName, kCFStringEncodingMacRoman)));
+            CFRelease(cfStrName);
+        }
+        else {
+            nameList.push_back("DeckLink");
+        }
+        
+        deviceIndex++;
+    }
+    
+    return nameList;
 }
+#else
+vector<string> DeckLinkController::getDeviceNameList()  {
+    vector<string> nameList;
+    int deviceIndex = 0;
+    
+    while (deviceIndex < deviceList.size()) {
+        char* cfStrName;
+        // Get the name of this device
+        if (deviceList[deviceIndex]->GetDisplayName((const char**)&cfStrName) == S_OK) {
+            nameList.push_back(string(cfStrName));
+            
+        }
+        else {
+            nameList.push_back("DeckLink");
+        }
+        
+        deviceIndex++;
+    }
+    
+    return nameList;
+}
+#endif
+
+
+
 
 
 bool DeckLinkController::selectDevice(int index)  {
@@ -131,23 +174,47 @@ bail:
 	return result;
 }
 
-vector<string> DeckLinkController::getDisplayModeNames()  {
-	vector<string> modeNames;
-	int modeIndex;
-	CFStringRef modeName;
-	
-	for (modeIndex = 0; modeIndex < modeList.size(); modeIndex++) {
-		if (modeList[modeIndex]->GetName(&modeName) == S_OK) {
-			modeNames.push_back(string(CFStringGetCStringPtr(modeName, kCFStringEncodingMacRoman)));
-			CFRelease(modeName);
-		}
-		else {
-			modeNames.push_back("Unknown mode");
-		}
-	}
-	
-	return modeNames;
+void DeckLinkController::setColorConversionTimeout(int ms)  {
+    colorConversionTimeout = ms;
 }
+#ifdef TARGET_OSX
+vector<string> DeckLinkController::getDisplayModeNames()  {
+    vector<string> modeNames;
+    int modeIndex;
+    CFStringRef modeName;
+    
+    for (modeIndex = 0; modeIndex < modeList.size(); modeIndex++) {
+        if (modeList[modeIndex]->GetName(&modeName) == S_OK) {
+            modeNames.push_back(string(CFStringGetCStringPtr(modeName, kCFStringEncodingMacRoman)));
+            CFRelease(modeName);
+        }
+        else {
+            modeNames.push_back("Unknown mode");
+        }
+    }
+    
+    return modeNames;
+}
+#else
+vector<string> DeckLinkController::getDisplayModeNames()  {
+    vector<string> modeNames;
+    int modeIndex;
+    char* modeName;
+    
+    for (modeIndex = 0; modeIndex < modeList.size(); modeIndex++) {
+        if (modeList[modeIndex]->GetName((const char**)&modeName) == S_OK) {
+            modeNames.push_back(string(modeName));
+            
+        }
+        else {
+            modeNames.push_back("Unknown mode");
+        }
+    }
+    
+    return modeNames;
+}
+#endif
+
 
 bool DeckLinkController::isFormatDetectionEnabled()  {
 	return supportFormatDetection;
@@ -155,6 +222,54 @@ bool DeckLinkController::isFormatDetectionEnabled()  {
 
 bool DeckLinkController::isCapturing()  {
 	return currentlyCapturing;
+}
+
+unsigned long DeckLinkController::getDisplayModeBufferSize(BMDDisplayMode mode) {
+
+	if(mode == bmdModeNTSC2398
+			|| mode == bmdModeNTSC
+			|| mode == bmdModeNTSCp) {
+		return 720 * 486 * 2;
+	} else if( mode == bmdModePAL
+			|| mode == bmdModePALp) {
+		return 720 * 576 * 2;
+	} else if( mode == bmdModeHD720p50
+			|| mode == bmdModeHD720p5994
+			|| mode == bmdModeHD720p60) {
+		return 1280 * 720 * 2;
+	} else if( mode == bmdModeHD1080p2398
+			|| mode == bmdModeHD1080p24
+			|| mode == bmdModeHD1080p25
+			|| mode == bmdModeHD1080p2997
+			|| mode == bmdModeHD1080p30
+			|| mode == bmdModeHD1080i50
+			|| mode == bmdModeHD1080i5994
+			|| mode == bmdModeHD1080i6000
+			|| mode == bmdModeHD1080p50
+			|| mode == bmdModeHD1080p5994
+			|| mode == bmdModeHD1080p6000) {
+		return 1920 * 1080 * 2;
+	} else if( mode == bmdMode2k2398
+			|| mode == bmdMode2k24
+			|| mode == bmdMode2k25) {
+		return 2048 * 1556 * 2;
+	} else if( mode == bmdMode2kDCI2398
+			|| mode == bmdMode2kDCI24
+			|| mode == bmdMode2kDCI25) {
+		return 2048 * 1080 * 2;
+	} else if( mode == bmdMode4K2160p2398
+			|| mode == bmdMode4K2160p24
+			|| mode == bmdMode4K2160p25
+			|| mode == bmdMode4K2160p2997
+			|| mode == bmdMode4K2160p30) {
+		return 3840 * 2160 * 2;
+	} else if( mode == bmdMode4kDCI2398
+			|| mode == bmdMode4kDCI24
+			|| mode == bmdMode4kDCI25) {
+		return 4096 * 2160 * 2;
+	}
+
+	return 0;
 }
 
 bool DeckLinkController::startCaptureWithIndex(int videoModeIndex)  {
@@ -168,119 +283,15 @@ bool DeckLinkController::startCaptureWithIndex(int videoModeIndex)  {
 }
 
 bool DeckLinkController::startCaptureWithMode(BMDDisplayMode videoMode) {
-     
-     switch (videoMode) {
-               
-               
-          case 'ntsc':
-               {vector<unsigned char> prototype(720 * 480 * 2);
-               buffer.setup(prototype);}
-               break;
-          case 'nt23':
-               {vector<unsigned char> prototype(720 * 480 * 2);
-               buffer.setup(prototype);}
-             
-               break;	// 3:2 pulldown
-          case 'pal ':
-               {vector<unsigned char> prototype(720 * 576 * 2);
-               buffer.setup(prototype);}
-       
-               break;
-          case 'ntsp':
-               {vector<unsigned char> prototype(720 * 480 * 2);
-               buffer.setup(prototype);}
-      
-               break;
-          case 'palp':
-               {vector<unsigned char> prototype(720 * 576 * 2);
-               buffer.setup(prototype);}
-   
-               break;
-               
-               /* HD 1080 Modes */
-               
-          case '23ps':
-               {vector<unsigned char> prototype(1920 * 1080 * 2);
-               buffer.setup(prototype);}
-               break;
-          case '24ps':
-               {vector<unsigned char> prototype(1920 * 1080 * 2);
-               buffer.setup(prototype);}
-               break;
-          case 'Hp25':
-               {vector<unsigned char> prototype(1920 * 1080 * 2);
-               buffer.setup(prototype);}
-               break;
-          case 'Hp29':
-               {vector<unsigned char> prototype(1920 * 1080 * 2);
-               buffer.setup(prototype);}
-               break;
-          case 'Hp30':
-               {vector<unsigned char> prototype(1920 * 1080 * 2);
-               buffer.setup(prototype);}
-               break;
-          case 'Hi50':
-               {vector<unsigned char> prototype(1920 * 1080 * 2);
-               buffer.setup(prototype);}
-               break;
-          case 'Hi59':
-               {vector<unsigned char> prototype(1920 * 1080 * 2);
-               buffer.setup(prototype);}
-               break;
-          case 'Hi60':
-               {vector<unsigned char> prototype(1920 * 1080 * 2);
-               buffer.setup(prototype);}
-               break;	// N.B. This _really_ is 60.00 Hz.
-          case 'Hp50':
-               {vector<unsigned char> prototype(1920 * 1080 * 2);
-               buffer.setup(prototype);}
-               break;
-          case 'Hp59':
-               {vector<unsigned char> prototype(1920 * 1080 * 2);
-               buffer.setup(prototype);}
-               break;
-          case 'Hp60':
-               {vector<unsigned char> prototype(1920 * 1080 * 2);
-               buffer.setup(prototype);}
-               break;	// N.B. This _really_ is 60.00 Hz.
-               
-               /* HD 720 Modes */
-               
-          case 'hp50':
-               {vector<unsigned char> prototype(1280 * 720 * 2);
-               buffer.setup(prototype);}
-               break;
-          case 'hp59':
-               {vector<unsigned char> prototype(1280 * 720 * 2);
-               buffer.setup(prototype);}
-               break;
-          case 'hp60':
-               {vector<unsigned char> prototype(1280 * 720 * 2);
-               buffer.setup(prototype);}
-               break;
-               
-               /* 2k Modes */
-               
-          case '2k23':
-               {vector<unsigned char> prototype(2048 * 1080 * 2);
-               buffer.setup(prototype);}
-               break;
-          case '2k24':
-               {vector<unsigned char> prototype(2048 * 1080 * 2);
-               buffer.setup(prototype);}
-               break;
-          case '2k25':
-               {vector<unsigned char> prototype(2048 * 1080 * 2);
-               buffer.setup(prototype);}
-               break;
-     }
-//	if(videoMode == bmdModeHD1080p25) {
-//		vector<unsigned char> prototype(1920 * 1080 * 2);
-//		buffer.setup(prototype);
-//	} else {
-//		ofLogError("DeckLinkController") << "DeckLinkController needs to be updated to support that mode.";
-//		return false;
-//	}
+    int bufferSize = getDisplayModeBufferSize(videoMode);
+    
+	if(bufferSize != 0) {
+		vector<unsigned char> prototype(bufferSize);
+		buffer.setup(prototype);
+	} else{
+		ofLogError("DeckLinkController") << "DeckLinkController needs to be updated to support that mode.";
+		return false;
+	}
 	
 	BMDVideoInputFlags videoInputFlags;
 	
@@ -370,7 +381,21 @@ HRESULT DeckLinkController::VideoInputFrameArrived (/* in */ IDeckLinkVideoInput
 //	getAncillaryDataFromFrame(videoFrame, bmdTimecodeRP188VITC1, ancillaryData.rp188vitc1Timecode, ancillaryData.rp188vitc1UserBits);
 //	getAncillaryDataFromFrame(videoFrame, bmdTimecodeRP188LTC, ancillaryData.rp188ltcTimecode, ancillaryData.rp188ltcUserBits);
 //	getAncillaryDataFromFrame(videoFrame, bmdTimecodeRP188VITC2, ancillaryData.rp188vitc2Timecode, ancillaryData.rp188vitc2UserBits);
+    
+    // Using DeckLink SDK for colour conversion
+    if (!rgbaFrame) {
+        rgbaFrame = new VideoFrame(videoFrame->GetWidth(), videoFrame->GetHeight());
+    }
+    
+    if (rgbaFrame->lock.try_lock_for(std::chrono::milliseconds(colorConversionTimeout))) {
+        videoConverter->ConvertFrame(videoFrame, rgbaFrame);
+        rgbaFrame->lock.unlock();
+    }
+    else {
+        cout << "Cannot copy frame data as videoFrame is locked" << endl;
+    }
 
+    // Raw data
 	void* bytes;
 	videoFrame->GetBytes(&bytes);
 	unsigned char* raw = (unsigned char*) bytes;
@@ -380,31 +405,206 @@ HRESULT DeckLinkController::VideoInputFrameArrived (/* in */ IDeckLinkVideoInput
 	
 	return S_OK;
 }
-
+#ifdef TARGET_OSX
 void DeckLinkController::getAncillaryDataFromFrame(IDeckLinkVideoInputFrame* videoFrame, BMDTimecodeFormat timecodeFormat, string& timecodeString, string& userBitsString)  {
-	IDeckLinkTimecode* timecode = NULL;
-	CFStringRef timecodeCFString;
-	BMDTimecodeUserBits userBits = 0;
-	
-	if ((videoFrame != NULL)
-		&& (videoFrame->GetTimecode(timecodeFormat, &timecode) == S_OK)) {
-		if (timecode->GetString(&timecodeCFString) == S_OK) {
-			timecodeString = string(CFStringGetCStringPtr(timecodeCFString, kCFStringEncodingMacRoman));
-			CFRelease(timecodeCFString);
-		}
-		else {
-			timecodeString = "";
-		}
-		
-		timecode->GetTimecodeUserBits(&userBits);
-		userBitsString = "0x" + ofToHex(userBits);
-		
-		timecode->Release();
+    IDeckLinkTimecode* timecode = NULL;
+    CFStringRef timecodeCFString;
+    BMDTimecodeUserBits userBits = 0;
+    
+    if ((videoFrame != NULL)
+        && (videoFrame->GetTimecode(timecodeFormat, &timecode) == S_OK)) {
+        if (timecode->GetString(&timecodeCFString) == S_OK) {
+            timecodeString = string(CFStringGetCStringPtr(timecodeCFString, kCFStringEncodingMacRoman));
+            CFRelease(timecodeCFString);
+        }
+        else {
+            timecodeString = "";
+        }
+        
+        timecode->GetTimecodeUserBits(&userBits);
+        userBitsString = "0x" + ofToHex(userBits);
+        
+        timecode->Release();
+    }
+    else {
+        timecodeString = "";
+        userBitsString = "";
+    }
+}
+
+#else
+void DeckLinkController::getAncillaryDataFromFrame(IDeckLinkVideoInputFrame* videoFrame, BMDTimecodeFormat timecodeFormat, string& timecodeString, string& userBitsString)  {
+    IDeckLinkTimecode* timecode = NULL;
+    char * timecodeCFString;
+    BMDTimecodeUserBits userBits = 0;
+    
+    if ((videoFrame != NULL)
+        && (videoFrame->GetTimecode(timecodeFormat, &timecode) == S_OK)) {
+        if (timecode->GetString((const char**)&timecodeCFString) == S_OK) {
+            timecodeString = string(timecodeCFString);
+            
+        }
+        else {
+            timecodeString = "";
+        }
+        
+        timecode->GetTimecodeUserBits(&userBits);
+        userBitsString = "0x" + ofToHex(userBits);
+        
+        timecode->Release();
+    }
+    else {
+        timecodeString = "";
+        userBitsString = "";
+    }
+}
+#endif
+
+
+// picks the mode with matching resolution, with highest available framerate
+// and a preference for progressive over interlaced
+BMDDisplayMode DeckLinkController::getDisplayMode(int w, int h) {
+
+	if (w == 720 && h == 486) {				// NTSC
+		return bmdModeNTSCp;
+	} else if (w == 720 && h == 576) {		// PAL
+		return bmdModePALp;
+	} else if (w == 1280 && h == 720) {		// HD 720
+		return bmdModeHD720p60;
+	} else if (w == 1920 && h == 1080) {	// HD 1080
+		return bmdModeHD1080p6000;
+	} else if (w == 2048 && h == 1556) {	// 2k
+		return bmdMode2k25;
+	} else if (w == 2048 && h == 1080) {	// 2k DCI
+		return bmdMode2kDCI25;
+	} else if (w == 3840 && h == 2160) {	// 4K
+		return bmdMode4K2160p30;
+	} else if (w == 4096 && h == 2160) {	// 4k DCI
+		return bmdMode4kDCI25;
 	}
-	else {
-		timecodeString = "";
-		userBitsString = "";
+
+	return bmdModeUnknown;
+}
+
+BMDDisplayMode DeckLinkController::getDisplayMode(int w, int h, float framerate) {
+	string err = "invalid framerate, for this resolution you can use:";
+
+	if (w == 720 && h == 486) {									// NTSC
+		if (framerate == 29.97f) {
+		    return bmdModeNTSC;
+		} else if (framerate == 23.98f) {
+            return bmdModeNTSC2398;
+		} else if (framerate == 59.94f) {
+		    return bmdModeNTSCp;
+		} else {
+			ofLogError("DeckLinkController") << err << endl
+				<< "23.98, 29.97, 59.94";
+			return bmdModeUnknown;
+		}
+	} else if (w == 720 && h == 576) {							// PAL
+		if (framerate == 25.f) {
+		    return bmdModePAL;
+		} else if (framerate == 50.f) {
+		    return bmdModePALp;
+		} else {
+			ofLogError("DeckLinkController") << err << endl
+				<< "25, 50";
+			return bmdModeUnknown;
+		}
+	} else if (w == 1280 && h == 720) {							// HD 720
+        if (framerate == 50.f) {
+            return bmdModeHD720p50;
+		} else if (framerate == 59.94f) {
+		    return bmdModeHD720p5994;
+		} else if (framerate == 60.f) {
+			return bmdModeHD720p60;
+		} else {
+			ofLogError("DeckLinkController") << err << endl
+				<< "50, 59.94, 60";
+			return bmdModeUnknown;
+		}
+	} else if (w == 1920 && h == 1080) {						// HD 1080
+		if (framerate == 23.98f) {
+			return bmdModeHD1080p2398;
+		} else if (framerate == 24.f) {
+			return bmdModeHD1080p24;
+		} else if (framerate == 25.f) {
+			return bmdModeHD1080p25;
+		} else if (framerate == 29.97f) {
+			return bmdModeHD1080p2997;
+		} else if (framerate == 30.f) {
+			return bmdModeHD1080p30;
+		} else if (framerate == 50.f) {
+			return bmdModeHD1080i50;
+		} else if (framerate == 59.94f) {
+			return bmdModeHD1080i5994;
+		} else if (framerate == 60.f) {
+			return bmdModeHD1080i6000;
+		} else if (framerate == 50.f) {
+			return bmdModeHD1080p50;
+		} else if (framerate == 59.94f) {
+			return bmdModeHD1080p5994;
+		} else if (framerate == 60.f) {
+			return bmdModeHD1080p6000;
+		} else {
+			ofLogError("DeckLinkController") << err << endl
+				<< "23.94, 24, 25, 29.97, 30" << endl
+				<< "50, 59.94, 60, 50, 59.94, 60";
+			return bmdModeUnknown;
+		}
+	} else if (w == 2048 && h == 1556) {						// 2k
+		if (framerate == 23.98f) {
+			return bmdMode2k2398;
+		} else if (framerate == 24.f) {
+			return bmdMode2k24;
+		} else if (framerate == 25.f) {
+			return bmdMode2k25;
+		} else {
+			ofLogError("DeckLinkController") << err << endl
+				<< "23.94, 24, 25";
+			return bmdModeUnknown;
+		}
+	} else if (w == 2048 && h == 1080) {						// 2k DCI
+		if (framerate == 23.98f) {
+			return bmdMode2kDCI2398;
+		} else if (framerate == 24.f) {
+			return bmdMode2kDCI24;
+		} else if (framerate == 25.f) {
+			return bmdMode2kDCI25;
+		} else {
+			ofLogError("DeckLinkController") << err << endl
+				<< "23.98 24, 25";
+			return bmdModeUnknown;
+		}
+	} else if (w == 3840 && h == 2160) {						// 4K
+		if (framerate == 23.98f) {
+			return bmdMode4K2160p2398;
+		} else if (framerate == 24.f) {
+			return bmdMode4K2160p24;
+		} else if (framerate == 25.f) {
+			return bmdMode4K2160p25;
+		} else if (framerate == 29.97f) {
+			return bmdMode4K2160p2997;
+		} else if (framerate == 30.f) {
+			return bmdMode4K2160p30;
+		} else {
+			ofLogError("DeckLinkController") << err << endl
+				<< "23.98, 24, 25, 29.97, 30";
+			return bmdModeUnknown;
+		}
+	} else if (w == 4096 && h == 2160) {						// 4k DCI
+		if (framerate == 23.98f) {
+		    return bmdMode4kDCI2398;
+		} else if (framerate == 24.f) {
+		    return bmdMode4kDCI24;
+		} else if (framerate == 25.f) {
+		    return bmdMode4kDCI25;
+		} else {
+			ofLogError("DeckLinkController") << err << endl
+				<< "23.98, 24, 25";
+			return bmdModeUnknown;
+		}
 	}
-	
-	
+
+	return bmdModeUnknown;
 }

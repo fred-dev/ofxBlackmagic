@@ -1,5 +1,9 @@
 # ofxBlackMagic is an addon for [openFrameworks](http://openframeworks.cc/)
 
+updated to support 3840x2160 @ 29.97 input from the ULTRASTUDIO 4K
+
+
+
 This addon is derived from studying an older addon, [ofxBlackMagicGrabber](https://github.com/arturoc/ofxBlackmagicGrabber), and the [DeckLink SDK](http://www.blackmagicdesign.com/support/sdks) sample code.
 
 The goal is to provide a simple and highly optimized interface with no extraneous methods that makes it clear what a Black Magic device can offer.
@@ -15,12 +19,18 @@ Some advantages of this addon:
 
 ## Supported System
 
-This addon has been checked with OS X 10.8 on Mac Mini, openFrameworks 0.8.0. This fork adds multiple device support and all formats up to 2k- I am sure it is a gross hack but it is working for me, more elegant solutions are welcome (ie querying how many cards are in the system and queurying what resolutions a card supports)
+This addon has been checked with OS X 10.8 on Mac Mini, openFrameworks 0.8.0 and an UltraStudio Mini Recorder with a single 1080p30 camera.
+
+This addon has been checked with a OS X 10.9 on a MacPro trashcan with openFrameworks 0.8.3 and an UltraStudio 4k Thunderbolt 2 device. 
+
+This fork is also updated to support Linux tested on Ubuntu 18.0.4 with OF 0.1.0
+
+And is now tested on 10.12.6 With thunderbolt devices on a macbook pro retina (same hardware for Linux testing)
 
 ## Installation
 
-First, install the [Black Magic software](http://www.blackmagicdesign.com/support). If you are using an UltraStudio Mini Recorder, you should download [Desktop Video 9.8 for Macintosh](http://www.blackmagicdesign.com/support/detail?sid=3958&pid=31781&leg=false&os=mac). After installation, go to System Preferences, click "Black Magic Design" and make sure "Use 1080p not 1080PsF" is checked (this option is only available when the capture card is plugged in). If you don't check this option, nothing will work.
+First, install the [Black Magic software](http://www.blackmagicdesign.com/support). If you are using an UltraStudio Mini Recorder, you should download "Desktop Video 10.8.1 for Macintosh". After installation, go to System Preferences, click "Black Magic Desktop Video", click on your device, and make sure "1080PsF" is un-checked (this option is only available when the capture card is plugged in). If you don't un-check this option, nothing will work.
 
-Then go to the [support](http://www.blackmagicdesign.com/support/sdks) page and download the DeckLink SDK (currently at version 9.7.7). After unzipping the SDK open the app `Mac/Samples/bin/CapturePreview` and select the video format of your device and hit "Start". If you have the right mode selected you should see the video streaming.
+Then go to the [support](http://www.blackmagicdesign.com/support/sdks) page and download the DeckLink SDK (currently at version 10.8). After unzipping the SDK open the app `Mac/Samples/bin/CapturePreview` and hit "Start". The app should automatically detect the mode of your camera.
 
 One you see the demo app working, try building and running the `example/` that comes with `ofxBlackMagic`.
