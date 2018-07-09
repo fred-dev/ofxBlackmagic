@@ -50,7 +50,59 @@ bool ofxBlackMagic::setup(BMDDisplayMode displayMode, int deviceId, ColorFrameCa
     if(!controller.startCaptureWithMode(displayMode)) {
         return false;
     }
+    if(displayMode == bmdModeNTSC2398
+       || displayMode == bmdModeNTSC
+       || displayMode == bmdModeNTSCp) {
+        this->width = 720;
+        this->height = 486;
+    } else if( displayMode == bmdModePAL
+              || displayMode == bmdModePALp) {
+        this->width = 720;
+        this->height = 576;
+    } else if( displayMode == bmdModeHD720p50
+              || displayMode == bmdModeHD720p5994
+              || displayMode == bmdModeHD720p60) {
+        this->width = 1280;
+        this->height = 720;
+    } else if( displayMode == bmdModeHD1080p2398
+              || displayMode == bmdModeHD1080p24
+              || displayMode == bmdModeHD1080p25
+              || displayMode == bmdModeHD1080p2997
+              || displayMode == bmdModeHD1080p30
+              || displayMode == bmdModeHD1080i50
+              || displayMode == bmdModeHD1080i5994
+              || displayMode == bmdModeHD1080i6000
+              || displayMode == bmdModeHD1080p50
+              || displayMode == bmdModeHD1080p5994
+              || displayMode == bmdModeHD1080p6000) {
+        this->width = 1920;
+        this->height = 1080;
+    } else if( displayMode == bmdMode2k2398
+              || displayMode == bmdMode2k24
+              || displayMode == bmdMode2k25) {
+        this->width = 2048;
+        this->height =1556;
+    } else if( displayMode == bmdMode2kDCI2398
+              || displayMode == bmdMode2kDCI24
+              || displayMode == bmdMode2kDCI25) {
+        this->width = 2048;
+        this->height =1080;
+    } else if( displayMode == bmdMode4K2160p2398
+              || displayMode == bmdMode4K2160p24
+              || displayMode == bmdMode4K2160p25
+              || displayMode == bmdMode4K2160p2997
+              || displayMode == bmdMode4K2160p30) {
+        this->width = 3840;
+        this->height =2160;
+    } else if( displayMode == bmdMode4kDCI2398
+              || displayMode == bmdMode4kDCI24
+              || displayMode == bmdMode4kDCI25) {
+        this->width = 4096;
+        this->height =2160;
+    }
+    
 
+    
     this->colorFrameCaptureMode = colorFrameCaptureMode;
     controller.setColorConversionTimeout(this->colorFrameCaptureMode);
 
