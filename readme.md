@@ -1,5 +1,8 @@
 # ofxBlackMagic is an addon for [openFrameworks](http://openframeworks.cc/)
 
+> **About this fork:** Fork of [kylemcdonald/ofxBlackmagic](https://github.com/kylemcdonald/ofxBlackmagic) (2014-2018). Adds draw modes, DeckLink output with output selection, an output example and Linux support. Upstream has moved on since (28 commits).
+
+
 updated to support 3840x2160 @ 29.97 input from the ULTRASTUDIO 4K
 
 
