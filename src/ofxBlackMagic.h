@@ -38,6 +38,9 @@ public:
     ofTexture& getGrayTexture(); // fast
     ofTexture& getColorTexture(); // slower
     
+    void draw(float x, float y); // fastest
+    void draw(float x, float y, float w, float h); // fastest
+    
     void drawYuv(float x, float y); // fastest
      void drawYuv(float x, float y, float w, float h); // fastest
 

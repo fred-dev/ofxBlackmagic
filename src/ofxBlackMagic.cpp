@@ -191,7 +191,12 @@ ofTexture& ofxBlackMagic::getColorTexture() {
 	return colorTex;
 }
 
-
+void ofxBlackMagic::draw(float x, float y){
+    getColorTexture().draw(x, y);
+}
+void ofxBlackMagic::draw(float x, float y, float w, float h){
+    getColorTexture().draw(x, y, w, h);
+}
 void ofxBlackMagic::drawYuv(float x, float y){
     getYuvTexture().draw(x, y);
 }
