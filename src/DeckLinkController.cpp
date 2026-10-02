@@ -1,20 +1,48 @@
 
 #include "DeckLinkController.h"
 
+namespace {
+#ifdef TARGET_OSX
+	// CFStringGetCStringPtr may return NULL, so copy into a buffer instead
+	string toString(CFStringRef cfString) {
+		char buffer[512];
+		if (cfString != NULL && CFStringGetCString(cfString, buffer, sizeof(buffer), kCFStringEncodingUTF8)) {
+			return string(buffer);
+		}
+		return "";
+	}
+#endif
+}
+
 DeckLinkController::DeckLinkController()
 : selectedDevice(NULL)
 , deckLinkInput(NULL)
 , supportFormatDetection(false)
 , currentlyCapturing(false)
+, selectedIndex(-1)
+, videoConverter(NULL)
+, colorConversionTimeout(75)
+, frameWidth(0)
+, frameHeight(0)
+, signalPresent(false)
 , rgbaFrame(NULL)  {
 }
 
 DeckLinkController::~DeckLinkController()  {
-	vector<IDeckLink*>::iterator it;
+	if (currentlyCapturing) {
+		stopCapture();
+	}
+	while (modeList.size() > 0) {
+		modeList.back()->Release();
+		modeList.pop_back();
+	}
+	if (deckLinkInput != NULL) {
+		deckLinkInput->Release();
+	}
 	
 	// Release the IDeckLink list
-	for(it = deviceList.begin(); it != deviceList.end(); it++) {
-		(*it)->Release();
+	for (auto device : deviceList) {
+		device->Release();
 	}
     
     // Release the IDeckLinkVideoConversion
@@ -37,7 +65,11 @@ bool DeckLinkController::init()  {
 		goto bail;
 	}
 	
-	// List all DeckLink devices
+	// List all DeckLink devices (init() may be called again, e.g. by listDevices())
+	for (auto device : deviceList) {
+		device->Release();
+	}
+	deviceList.clear();
 	while (deckLinkIterator->Next(&deckLink) == S_OK) {
 		// Add device to the device list
 		deviceList.push_back(deckLink);
@@ -48,9 +80,8 @@ bool DeckLinkController::init()  {
 		goto bail;
 	}
     
-    // Create a video converter
+    // Create a video converter (the instance starts with one reference)
     videoConverter = CreateVideoConversionInstance();
-    videoConverter->AddRef();
 	
 	result = true;
 	
@@ -79,7 +110,7 @@ vector<string> DeckLinkController::getDeviceNameList()  {
         
         // Get the name of this device
         if (deviceList[deviceIndex]->GetDisplayName(&cfStrName) == S_OK) {
-            nameList.push_back(string(CFStringGetCStringPtr(cfStrName, kCFStringEncodingMacRoman)));
+            nameList.push_back(toString(cfStrName));
             CFRelease(cfStrName);
         }
         else {
@@ -119,21 +150,25 @@ vector<string> DeckLinkController::getDeviceNameList()  {
 
 
 bool DeckLinkController::selectDevice(int index)  {
-	IDeckLinkAttributes* deckLinkAttributes = NULL;
+	DeckLinkAttributesInterface* deckLinkAttributes = NULL;
 	IDeckLinkDisplayModeIterator* displayModeIterator = NULL;
 	IDeckLinkDisplayMode* displayMode = NULL;
 	bool result = false;
 	
 	// Check index
-	if (index >= deviceList.size()) {
+	if (index < 0 || index >= deviceList.size()) {
 		ofLogError("DeckLinkController") << "This application was unable to select the device.";
 		goto bail;
 	}
 	
 	// A new device has been selected.
 	// Release the previous selected device and mode list
-	if (deckLinkInput != NULL)
+	if (currentlyCapturing)
+		stopCapture();
+	if (deckLinkInput != NULL) {
 		deckLinkInput->Release();
+		deckLinkInput = NULL;
+	}
 	
 	while(modeList.size() > 0) {
 		modeList.back()->Release();
@@ -161,13 +196,14 @@ bool DeckLinkController::selectDevice(int index)  {
 	// Check if input mode detection format is supported.
 	
 	supportFormatDetection = false; // assume unsupported until told otherwise
-	if (deviceList[index]->QueryInterface(IID_IDeckLinkAttributes, (void**) &deckLinkAttributes) == S_OK) {
+	if (deviceList[index]->QueryInterface(DECKLINK_ATTRIBUTES_IID, (void**) &deckLinkAttributes) == S_OK) {
 		if (deckLinkAttributes->GetFlag(BMDDeckLinkSupportsInputFormatDetection, &supportFormatDetection) != S_OK)
 			supportFormatDetection = false;
 		
 		deckLinkAttributes->Release();
 	}
 	
+	selectedIndex = index;
 	result = true;
 	
 bail:
@@ -185,7 +221,7 @@ vector<string> DeckLinkController::getDisplayModeNames()  {
     
     for (modeIndex = 0; modeIndex < modeList.size(); modeIndex++) {
         if (modeList[modeIndex]->GetName(&modeName) == S_OK) {
-            modeNames.push_back(string(CFStringGetCStringPtr(modeName, kCFStringEncodingMacRoman)));
+            modeNames.push_back(toString(modeName));
             CFRelease(modeName);
         }
         else {
@@ -224,52 +260,45 @@ bool DeckLinkController::isCapturing()  {
 	return currentlyCapturing;
 }
 
-unsigned long DeckLinkController::getDisplayModeBufferSize(BMDDisplayMode mode) {
-
-	if(mode == bmdModeNTSC2398
-			|| mode == bmdModeNTSC
-			|| mode == bmdModeNTSCp) {
-		return 720 * 486 * 2;
-	} else if( mode == bmdModePAL
-			|| mode == bmdModePALp) {
-		return 720 * 576 * 2;
-	} else if( mode == bmdModeHD720p50
-			|| mode == bmdModeHD720p5994
-			|| mode == bmdModeHD720p60) {
-		return 1280 * 720 * 2;
-	} else if( mode == bmdModeHD1080p2398
-			|| mode == bmdModeHD1080p24
-			|| mode == bmdModeHD1080p25
-			|| mode == bmdModeHD1080p2997
-			|| mode == bmdModeHD1080p30
-			|| mode == bmdModeHD1080i50
-			|| mode == bmdModeHD1080i5994
-			|| mode == bmdModeHD1080i6000
-			|| mode == bmdModeHD1080p50
-			|| mode == bmdModeHD1080p5994
-			|| mode == bmdModeHD1080p6000) {
-		return 1920 * 1080 * 2;
-	} else if( mode == bmdMode2k2398
-			|| mode == bmdMode2k24
-			|| mode == bmdMode2k25) {
-		return 2048 * 1556 * 2;
-	} else if( mode == bmdMode2kDCI2398
-			|| mode == bmdMode2kDCI24
-			|| mode == bmdMode2kDCI25) {
-		return 2048 * 1080 * 2;
-	} else if( mode == bmdMode4K2160p2398
-			|| mode == bmdMode4K2160p24
-			|| mode == bmdMode4K2160p25
-			|| mode == bmdMode4K2160p2997
-			|| mode == bmdMode4K2160p30) {
-		return 3840 * 2160 * 2;
-	} else if( mode == bmdMode4kDCI2398
-			|| mode == bmdMode4kDCI24
-			|| mode == bmdMode4kDCI25) {
-		return 4096 * 2160 * 2;
+IDeckLinkDisplayMode* DeckLinkController::findMode(BMDDisplayMode mode) {
+	for (auto m : modeList) {
+		if (m->GetDisplayMode() == mode) {
+			return m;
+		}
 	}
+	return NULL;
+}
 
-	return 0;
+unsigned long DeckLinkController::getDisplayModeBufferSize(BMDDisplayMode mode) {
+	// 8 bit YUV (2vuy): two bytes per pixel
+	IDeckLinkDisplayMode* m = findMode(mode);
+	return m == NULL ? 0 : (unsigned long)m->GetWidth() * m->GetHeight() * 2;
+}
+
+bool DeckLinkController::getDisplayModeInfo(BMDDisplayMode mode, int& w, int& h, float& framerate, string& name) {
+	IDeckLinkDisplayMode* m = findMode(mode);
+	if (m == NULL) {
+		return false;
+	}
+	w = m->GetWidth();
+	h = m->GetHeight();
+	BMDTimeValue duration;
+	BMDTimeScale scale;
+	m->GetFrameRate(&duration, &scale);
+	framerate = duration > 0 ? float(scale) / float(duration) : 0;
+#ifdef TARGET_OSX
+	CFStringRef cfName;
+	if (m->GetName(&cfName) == S_OK) {
+		name = toString(cfName);
+		CFRelease(cfName);
+	}
+#else
+	const char* cName;
+	if (m->GetName(&cName) == S_OK) {
+		name = cName;
+	}
+#endif
+	return true;
 }
 
 bool DeckLinkController::startCaptureWithIndex(int videoModeIndex)  {
@@ -285,11 +314,18 @@ bool DeckLinkController::startCaptureWithIndex(int videoModeIndex)  {
 bool DeckLinkController::startCaptureWithMode(BMDDisplayMode videoMode) {
     int bufferSize = getDisplayModeBufferSize(videoMode);
     
+	if (deckLinkInput == NULL) {
+		ofLogError("DeckLinkController") << "No device selected.";
+		return false;
+	}
 	if(bufferSize != 0) {
 		vector<unsigned char> prototype(bufferSize);
 		buffer.setup(prototype);
+		IDeckLinkDisplayMode* m = findMode(videoMode);
+		frameWidth = m->GetWidth();
+		frameHeight = m->GetHeight();
 	} else{
-		ofLogError("DeckLinkController") << "DeckLinkController needs to be updated to support that mode.";
+		ofLogError("DeckLinkController") << "The selected device does not support that display mode.";
 		return false;
 	}
 	
@@ -319,8 +355,12 @@ bool DeckLinkController::startCaptureWithMode(BMDDisplayMode videoMode) {
 }
 
 void DeckLinkController::stopCapture()  {
+	if (deckLinkInput == NULL) {
+		return;
+	}
 	// Stop the capture
 	deckLinkInput->StopStreams();
+	deckLinkInput->DisableVideoInput();
 	
 	// Delete capture callback
 	deckLinkInput->SetCallback(NULL);
@@ -332,8 +372,10 @@ void DeckLinkController::stopCapture()  {
 HRESULT DeckLinkController::VideoInputFormatChanged (/* in */ BMDVideoInputFormatChangedEvents notificationEvents, /* in */ IDeckLinkDisplayMode *newMode, /* in */ BMDDetectedVideoInputFormatFlags detectedSignalFlags)  {
 	bool shouldRestartCaptureWithNewVideoMode = true;
 	
-	// Restart capture with the new video mode if told to
+	// Restart capture with the new video mode if told to. The frame buffers are
+	// resized as the first frames of the new mode arrive.
 	if (shouldRestartCaptureWithNewVideoMode) {
+		ofLogNotice("DeckLinkController") << "Input format changed to " << newMode->GetWidth() << "x" << newMode->GetHeight();
 		// Stop the capture
 		deckLinkInput->StopStreams();
 		
@@ -371,40 +413,60 @@ typedef struct {
 } AncillaryDataStruct;
 
 HRESULT DeckLinkController::VideoInputFrameArrived (/* in */ IDeckLinkVideoInputFrame* videoFrame, /* in */ IDeckLinkAudioInputPacket* audioPacket)  {
-//	bool hasValidInputSource = (videoFrame->GetFlags() & bmdFrameHasNoInputSource) != 0;
-	
-//	AncillaryDataStruct ancillaryData;
-	
-	// Get the various timecodes and userbits for this frame
-//	getAncillaryDataFromFrame(videoFrame, bmdTimecodeVITC, ancillaryData.vitcF1Timecode, ancillaryData.vitcF1UserBits);
-//	getAncillaryDataFromFrame(videoFrame, bmdTimecodeVITCField2, ancillaryData.vitcF2Timecode, ancillaryData.vitcF2UserBits);
-//	getAncillaryDataFromFrame(videoFrame, bmdTimecodeRP188VITC1, ancillaryData.rp188vitc1Timecode, ancillaryData.rp188vitc1UserBits);
-//	getAncillaryDataFromFrame(videoFrame, bmdTimecodeRP188LTC, ancillaryData.rp188ltcTimecode, ancillaryData.rp188ltcUserBits);
-//	getAncillaryDataFromFrame(videoFrame, bmdTimecodeRP188VITC2, ancillaryData.rp188vitc2Timecode, ancillaryData.rp188vitc2UserBits);
-    
+	if (videoFrame == NULL) {
+		return S_OK;
+	}
+	signalPresent = (videoFrame->GetFlags() & bmdFrameHasNoInputSource) == 0;
+
+	// Timecode, if the source sends any (RP188 first, then VITC)
+	string tc, userBits;
+	getAncillaryDataFromFrame(videoFrame, bmdTimecodeRP188Any, tc, userBits);
+	if (tc.empty()) {
+		getAncillaryDataFromFrame(videoFrame, bmdTimecodeVITC, tc, userBits);
+	}
+	{
+		std::lock_guard<std::mutex> guard(timecodeMutex);
+		timecode = tc;
+	}
+
+	long w = videoFrame->GetWidth();
+	long h = videoFrame->GetHeight();
+	frameWidth = w;
+	frameHeight = h;
+
     // Using DeckLink SDK for colour conversion
-    if (!rgbaFrame) {
-        rgbaFrame = new VideoFrame(videoFrame->GetWidth(), videoFrame->GetHeight());
+    if (rgbaFrame == NULL) {
+        rgbaFrame = new VideoFrame(w, h);
     }
     
     if (rgbaFrame->lock.try_lock_for(std::chrono::milliseconds(colorConversionTimeout))) {
+		if (rgbaFrame->getWidth() != w || rgbaFrame->getHeight() != h) {
+			rgbaFrame->allocate(w, h); // input format changed
+		}
         videoConverter->ConvertFrame(videoFrame, rgbaFrame);
         rgbaFrame->lock.unlock();
     }
     else {
-        cout << "Cannot copy frame data as videoFrame is locked" << endl;
+        ofLogVerbose("DeckLinkController") << "Skipped colour conversion, the RGBA frame is still locked";
     }
 
-    // Raw data
+    // Raw data, sized from the frame itself so a format change can't overrun it
 	void* bytes;
 	videoFrame->GetBytes(&bytes);
 	unsigned char* raw = (unsigned char*) bytes;
+	size_t size = (size_t)videoFrame->GetRowBytes() * h;
 	vector<unsigned char>& back = buffer.getBack();
-	back.assign(raw, raw + back.size());
+	back.assign(raw, raw + size);
 	buffer.swapBack();
 	
 	return S_OK;
 }
+
+string DeckLinkController::getTimecode() {
+	std::lock_guard<std::mutex> guard(timecodeMutex);
+	return timecode;
+}
+
 #ifdef TARGET_OSX
 void DeckLinkController::getAncillaryDataFromFrame(IDeckLinkVideoInputFrame* videoFrame, BMDTimecodeFormat timecodeFormat, string& timecodeString, string& userBitsString)  {
     IDeckLinkTimecode* timecode = NULL;
@@ -414,7 +476,7 @@ void DeckLinkController::getAncillaryDataFromFrame(IDeckLinkVideoInputFrame* vid
     if ((videoFrame != NULL)
         && (videoFrame->GetTimecode(timecodeFormat, &timecode) == S_OK)) {
         if (timecode->GetString(&timecodeCFString) == S_OK) {
-            timecodeString = string(CFStringGetCStringPtr(timecodeCFString, kCFStringEncodingMacRoman));
+            timecodeString = toString(timecodeCFString);
             CFRelease(timecodeCFString);
         }
         else {
@@ -464,147 +526,44 @@ void DeckLinkController::getAncillaryDataFromFrame(IDeckLinkVideoInputFrame* vid
 // picks the mode with matching resolution, with highest available framerate
 // and a preference for progressive over interlaced
 BMDDisplayMode DeckLinkController::getDisplayMode(int w, int h) {
-
-	if (w == 720 && h == 486) {				// NTSC
-		return bmdModeNTSCp;
-	} else if (w == 720 && h == 576) {		// PAL
-		return bmdModePALp;
-	} else if (w == 1280 && h == 720) {		// HD 720
-		return bmdModeHD720p60;
-	} else if (w == 1920 && h == 1080) {	// HD 1080
-		return bmdModeHD1080p6000;
-	} else if (w == 2048 && h == 1556) {	// 2k
-		return bmdMode2k25;
-	} else if (w == 2048 && h == 1080) {	// 2k DCI
-		return bmdMode2kDCI25;
-	} else if (w == 3840 && h == 2160) {	// 4K
-		return bmdMode4K2160p30;
-	} else if (w == 4096 && h == 2160) {	// 4k DCI
-		return bmdMode4kDCI25;
-	}
-
-	return bmdModeUnknown;
+	return getDisplayMode(w, h, -1);
 }
 
 BMDDisplayMode DeckLinkController::getDisplayMode(int w, int h, float framerate) {
-	string err = "invalid framerate, for this resolution you can use:";
-
-	if (w == 720 && h == 486) {									// NTSC
-		if (framerate == 29.97f) {
-		    return bmdModeNTSC;
-		} else if (framerate == 23.98f) {
-            return bmdModeNTSC2398;
-		} else if (framerate == 59.94f) {
-		    return bmdModeNTSCp;
-		} else {
-			ofLogError("DeckLinkController") << err << endl
-				<< "23.98, 29.97, 59.94";
-			return bmdModeUnknown;
+	IDeckLinkDisplayMode* best = NULL;
+	float bestRate = 0;
+	bool bestProgressive = false;
+	string available;
+	for (auto m : modeList) {
+		if (m->GetWidth() != w || m->GetHeight() != h) {
+			continue;
 		}
-	} else if (w == 720 && h == 576) {							// PAL
-		if (framerate == 25.f) {
-		    return bmdModePAL;
-		} else if (framerate == 50.f) {
-		    return bmdModePALp;
-		} else {
-			ofLogError("DeckLinkController") << err << endl
-				<< "25, 50";
-			return bmdModeUnknown;
+		BMDTimeValue duration;
+		BMDTimeScale scale;
+		m->GetFrameRate(&duration, &scale);
+		float rate = duration > 0 ? float(scale) / float(duration) : 0;
+		bool progressive = m->GetFieldDominance() == bmdProgressiveFrame || m->GetFieldDominance() == bmdProgressiveSegmentedFrame;
+		available += ofToString(rate, 2) + (progressive ? "p " : "i ");
+		if (framerate > 0) {
+			// 23.98 / 29.97 / 59.94 are matched with a small tolerance
+			if (fabs(rate - framerate) < 0.02f && (best == NULL || (progressive && !bestProgressive))) {
+				best = m;
+				bestProgressive = progressive;
+			}
 		}
-	} else if (w == 1280 && h == 720) {							// HD 720
-        if (framerate == 50.f) {
-            return bmdModeHD720p50;
-		} else if (framerate == 59.94f) {
-		    return bmdModeHD720p5994;
-		} else if (framerate == 60.f) {
-			return bmdModeHD720p60;
-		} else {
-			ofLogError("DeckLinkController") << err << endl
-				<< "50, 59.94, 60";
-			return bmdModeUnknown;
-		}
-	} else if (w == 1920 && h == 1080) {						// HD 1080
-		if (framerate == 23.98f) {
-			return bmdModeHD1080p2398;
-		} else if (framerate == 24.f) {
-			return bmdModeHD1080p24;
-		} else if (framerate == 25.f) {
-			return bmdModeHD1080p25;
-		} else if (framerate == 29.97f) {
-			return bmdModeHD1080p2997;
-		} else if (framerate == 30.f) {
-			return bmdModeHD1080p30;
-		} else if (framerate == 50.f) {
-			return bmdModeHD1080i50;
-		} else if (framerate == 59.94f) {
-			return bmdModeHD1080i5994;
-		} else if (framerate == 60.f) {
-			return bmdModeHD1080i6000;
-		} else if (framerate == 50.f) {
-			return bmdModeHD1080p50;
-		} else if (framerate == 59.94f) {
-			return bmdModeHD1080p5994;
-		} else if (framerate == 60.f) {
-			return bmdModeHD1080p6000;
-		} else {
-			ofLogError("DeckLinkController") << err << endl
-				<< "23.94, 24, 25, 29.97, 30" << endl
-				<< "50, 59.94, 60, 50, 59.94, 60";
-			return bmdModeUnknown;
-		}
-	} else if (w == 2048 && h == 1556) {						// 2k
-		if (framerate == 23.98f) {
-			return bmdMode2k2398;
-		} else if (framerate == 24.f) {
-			return bmdMode2k24;
-		} else if (framerate == 25.f) {
-			return bmdMode2k25;
-		} else {
-			ofLogError("DeckLinkController") << err << endl
-				<< "23.94, 24, 25";
-			return bmdModeUnknown;
-		}
-	} else if (w == 2048 && h == 1080) {						// 2k DCI
-		if (framerate == 23.98f) {
-			return bmdMode2kDCI2398;
-		} else if (framerate == 24.f) {
-			return bmdMode2kDCI24;
-		} else if (framerate == 25.f) {
-			return bmdMode2kDCI25;
-		} else {
-			ofLogError("DeckLinkController") << err << endl
-				<< "23.98 24, 25";
-			return bmdModeUnknown;
-		}
-	} else if (w == 3840 && h == 2160) {						// 4K
-		if (framerate == 23.98f) {
-			return bmdMode4K2160p2398;
-		} else if (framerate == 24.f) {
-			return bmdMode4K2160p24;
-		} else if (framerate == 25.f) {
-			return bmdMode4K2160p25;
-		} else if (framerate == 29.97f) {
-			return bmdMode4K2160p2997;
-		} else if (framerate == 30.f) {
-			return bmdMode4K2160p30;
-		} else {
-			ofLogError("DeckLinkController") << err << endl
-				<< "23.98, 24, 25, 29.97, 30";
-			return bmdModeUnknown;
-		}
-	} else if (w == 4096 && h == 2160) {						// 4k DCI
-		if (framerate == 23.98f) {
-		    return bmdMode4kDCI2398;
-		} else if (framerate == 24.f) {
-		    return bmdMode4kDCI24;
-		} else if (framerate == 25.f) {
-		    return bmdMode4kDCI25;
-		} else {
-			ofLogError("DeckLinkController") << err << endl
-				<< "23.98, 24, 25";
-			return bmdModeUnknown;
+		else if (best == NULL || (progressive && !bestProgressive) || (progressive == bestProgressive && rate > bestRate)) {
+			best = m;
+			bestRate = rate;
+			bestProgressive = progressive;
 		}
 	}
-
-	return bmdModeUnknown;
+	if (best == NULL) {
+		if (available.empty()) {
+			ofLogError("DeckLinkController") << "The device has no " << w << "x" << h << " mode";
+		} else {
+			ofLogError("DeckLinkController") << "No " << w << "x" << h << " mode at " << framerate << " fps, available: " << available;
+		}
+		return bmdModeUnknown;
+	}
+	return best->GetDisplayMode();
 }

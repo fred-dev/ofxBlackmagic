@@ -15,6 +15,15 @@
 
 class VideoFrame;
 
+// SDK 11 renamed IDeckLinkAttributes; support both so newer SDK headers can be dropped in.
+#if defined(BLACKMAGIC_DECKLINK_API_VERSION) && BLACKMAGIC_DECKLINK_API_VERSION >= 0x0b000000
+typedef IDeckLinkProfileAttributes DeckLinkAttributesInterface;
+#define DECKLINK_ATTRIBUTES_IID IID_IDeckLinkProfileAttributes
+#else
+typedef IDeckLinkAttributes DeckLinkAttributesInterface;
+#define DECKLINK_ATTRIBUTES_IID IID_IDeckLinkAttributes
+#endif
+
 class DeckLinkController : public IDeckLinkInputCallback {
 private:
 	vector<IDeckLink*> deviceList;
@@ -24,11 +33,19 @@ private:
 	
 	bool supportFormatDetection;
 	bool currentlyCapturing;
+	int selectedIndex;
     
     IDeckLinkVideoConversion *videoConverter;
     int colorConversionTimeout;
+
+	// Size of the incoming frames; changes when the input format changes
+	std::atomic<int> frameWidth, frameHeight;
+	std::atomic<bool> signalPresent;
+	std::mutex timecodeMutex;
+	string timecode;
 	
 	void getAncillaryDataFromFrame(IDeckLinkVideoInputFrame* frame, BMDTimecodeFormat format, string& timecodeString, string& userBitsString);
+	IDeckLinkDisplayMode* findMode(BMDDisplayMode mode);
 	
 public:
 	TripleBuffer< vector<unsigned char> > buffer;
@@ -61,8 +78,18 @@ public:
 	virtual HRESULT VideoInputFormatChanged (/* in */ BMDVideoInputFormatChangedEvents notificationEvents, /* in */ IDeckLinkDisplayMode *newDisplayMode, /* in */ BMDDetectedVideoInputFormatFlags detectedSignalFlags);
 	virtual HRESULT VideoInputFrameArrived (/* in */ IDeckLinkVideoInputFrame* videoFrame, /* in */ IDeckLinkAudioInputPacket* audioPacket);
     
+	// Looks the mode up in the modes the selected device reports, so every
+	// mode the hardware supports works. framerate <= 0 picks the highest
+	// progressive rate (interlaced only if there is no progressive mode).
 	BMDDisplayMode getDisplayMode(int w, int h);
 	BMDDisplayMode getDisplayMode(int w, int h, float framerate);
+	bool getDisplayModeInfo(BMDDisplayMode mode, int& w, int& h, float& framerate, string& name);
+
+	int getFrameWidth() { return frameWidth; }
+	int getFrameHeight() { return frameHeight; }
+	bool hasSignal() { return signalPresent; }
+	string getTimecode();
+	int getSelectedDeviceIndex() { return selectedIndex; }
     
     VideoFrame *rgbaFrame;
 };
