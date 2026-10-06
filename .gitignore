@@ -56,3 +56,6 @@ Thumbs.db
 Desktop.ini
 *.swp
 .idea/
+
+# Windows header generation scratch (scripts/generate_windows_headers.bat)
+libs/DeckLink/Win/midl_tmp/
