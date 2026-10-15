@@ -60,6 +60,8 @@ On Windows the SDK only ships interface definitions (`.idl`), which Microsoft's 
 
 It writes `libs/DeckLink/Win/include/DeckLinkAPI.h` and `libs/DeckLink/Win/src/DeckLinkAPI_i.c`; commit them so other machines don't need this step. Then generate the project with the projectGenerator as usual. COM is initialised by the addon; `ole32` / `oleaut32` are linked automatically.
 
+If a project was generated with an older version of the addon, delete its `.vcxproj` / `.vcxproj.filters` / `.sln` and generate it again: the projectGenerator only adds include paths when updating, so the Mac and Linux SDK folders stay on the path and their `DeckLinkAPI.h` is found instead of the Windows one. Match the project's platform toolset to `openframeworksLib`'s (Visual Studio 2026 retargets the OF lib to `v145`). On some Windows openFrameworks builds the first `ofLog` crashes unless `ofLogToConsole()` was called; the examples call it first thing in `main()`.
+
 ## Updating the SDK
 
 Copy a new SDK's `Mac/include/*.h`, `Linux/include/*.h` and `Win/include/*.idl` + `DeckLinkAPIVersion.h` into `libs/DeckLink/Mac/include`, `Linux/include`, `Win/idl` + `Win/include`, the two `DeckLinkAPIDispatch.cpp` into `Mac/src` and `Linux/src` (not the versioned `_vXX` ones), and run the Windows script again.

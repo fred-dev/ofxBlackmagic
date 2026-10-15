@@ -20,6 +20,11 @@
 
 #include "ofMain.h"
 
+#ifdef _WIN32
+// The MIDL-generated DeckLinkAPI.h expects COM (interface, IUnknown, BSTR) to be declared
+// already, and openFrameworks' WIN32_LEAN_AND_MEAN keeps ole2.h out of windows.h.
+#include <ole2.h>
+#endif
 #include "DeckLinkAPI.h"
 #include "TripleBuffer.h"
 
@@ -56,7 +61,7 @@ struct DeckLinkDeviceInfo {
 
 // A profile of a multi-input card (e.g. DeckLink Duo 2: 4 half duplex inputs or 2 full duplex)
 struct DeckLinkProfileInfo {
-	BMDProfileID id = 0;
+	BMDProfileID id{}; // an enum on Windows, an integer typedef elsewhere
 	std::string name;
 	bool active = false;
 };
